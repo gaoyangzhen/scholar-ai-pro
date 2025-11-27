@@ -10,7 +10,8 @@ import { initialDiffs } from './constants';
 // 处理 import.meta.env 可能为 undefined 的情况
 const getEnvVar = (key: string, defaultValue: string = '') => {
   try {
-    return (import.meta.env && import.meta.env[key]) || defaultValue;
+    // Cast to any to avoid TS error: Property 'env' does not exist on type 'ImportMeta'
+    return ((import.meta as any).env && (import.meta as any).env[key]) || defaultValue;
   } catch {
     return defaultValue;
   }
