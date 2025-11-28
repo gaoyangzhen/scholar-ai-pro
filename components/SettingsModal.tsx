@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
-import { Settings, Trash2, Key, X, ChevronDown, ChevronRight, Link as LinkIcon } from 'lucide-react';
+import { Settings, Trash2, Key, X, ChevronDown, ChevronRight, Link as LinkIcon, Activity, CheckCircle, AlertCircle, Loader2 } from 'lucide-react';
 import { Model } from '../types';
+import { api } from '../api';
 
 interface SettingsModalProps {
   models: Model[];
@@ -14,6 +15,10 @@ interface SettingsModalProps {
 const SettingsModal: React.FC<SettingsModalProps> = ({ models, apiKeys, onClose, onUpdateApiKey, onAddModel, onDeleteModel }) => {
   const [isAddingModel, setIsAddingModel] = useState(false);
   const [newModel, setNewModel] = useState({ name: '', desc: '', key: '', baseUrl: '' });
+  
+  // Test Connection States
+  const [testingModelId, setTestingModelId] = useState<string | null>(null);
+  const [testResults, setTestResults] = useState<Record<string, 'success' | 'error' | null>>({});
 
   const handleAdd = () => {
     if(newModel.name.trim()) {
@@ -30,6 +35,21 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ models, apiKeys, onClose,
         setIsAddingModel(false);
         setNewModel({ name: '', desc: '', key: '', baseUrl: '' });
     }
+  };
+
+  const handleTestConnection = async (modelId: string, key: string) => {
+      if (!key) return;
+      setTestingModelId(modelId);
+      setTestResults(prev => ({...prev, [modelId]: null}));
+      
+      try {
+          const success = await api.testConnection(modelId, key);
+          setTestResults(prev => ({...prev, [modelId]: success ? 'success' : 'error'}));
+      } catch (e) {
+          setTestResults(prev => ({...prev, [modelId]: 'error'}));
+      } finally {
+          setTestingModelId(null);
+      }
   };
 
   return (
@@ -69,22 +89,49 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ models, apiKeys, onClose,
                          )}
                       </div>
                       
-                      <div className="relative">
-                         <div className="absolute left-3 top-2.5 text-slate-400 pointer-events-none">
-                            <Key size={14}/>
-                         </div>
-                         <input 
-                           type="password" 
-                           value={apiKeys[model.id] || ''}
-                           onChange={(e) => onUpdateApiKey(model.id, e.target.value)}
-                           placeholder={`Enter API Key for ${model.name}...`}
-                           className="w-full pl-9 pr-10 py-2 border border-slate-200 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 outline-none bg-white"
-                         />
-                         {apiKeys[model.id] && (
-                           <button onClick={() => onUpdateApiKey(model.id, '')} className="absolute right-3 top-2.5 text-slate-400 hover:text-red-500">
-                             <X size={14} />
-                           </button>
-                         )}
+                      <div className="flex gap-2">
+                        <div className="relative flex-1">
+                           <div className="absolute left-3 top-2.5 text-slate-400 pointer-events-none">
+                              <Key size={14}/>
+                           </div>
+                           <input 
+                             type="password" 
+                             value={apiKeys[model.id] || ''}
+                             onChange={(e) => {
+                                 onUpdateApiKey(model.id, e.target.value);
+                                 setTestResults(prev => ({...prev, [model.id]: null})); // clear test result on change
+                             }}
+                             placeholder={`Enter API Key for ${model.name}...`}
+                             className="w-full pl-9 pr-10 py-2 border border-slate-200 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 outline-none bg-white"
+                           />
+                           {apiKeys[model.id] && (
+                             <button onClick={() => onUpdateApiKey(model.id, '')} className="absolute right-3 top-2.5 text-slate-400 hover:text-red-500">
+                               <X size={14} />
+                             </button>
+                           )}
+                        </div>
+                        <button 
+                           onClick={() => handleTestConnection(model.id, apiKeys[model.id])}
+                           disabled={!apiKeys[model.id] || testingModelId === model.id}
+                           className={`px-3 py-2 rounded-lg border text-sm font-medium transition-all flex items-center gap-1.5 min-w-[80px] justify-center
+                             ${testResults[model.id] === 'success' 
+                               ? 'bg-green-50 text-green-600 border-green-200' 
+                               : testResults[model.id] === 'error'
+                                 ? 'bg-red-50 text-red-600 border-red-200'
+                                 : 'bg-white border-slate-200 text-slate-600 hover:bg-slate-50'
+                             }
+                           `}
+                        >
+                           {testingModelId === model.id ? (
+                               <Loader2 size={14} className="animate-spin"/>
+                           ) : testResults[model.id] === 'success' ? (
+                               <><CheckCircle size={14}/> OK</>
+                           ) : testResults[model.id] === 'error' ? (
+                               <><AlertCircle size={14}/> Fail</>
+                           ) : (
+                               <><Activity size={14}/> Test</>
+                           )}
+                        </button>
                       </div>
                    </div>
                 ))}

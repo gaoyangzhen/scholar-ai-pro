@@ -8,6 +8,32 @@ interface AuthScreenProps {
 
 const AuthScreen: React.FC<AuthScreenProps> = ({ onLogin }) => {
   const [isLogin, setIsLogin] = useState(true);
+  const [formData, setFormData] = useState({
+    email: '',
+    password: '',
+    fullName: ''
+  });
+
+  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const { name, value } = e.target;
+    setFormData(prev => ({ ...prev, [name]: value }));
+  };
+
+  const handleSubmit = () => {
+    // Validation Logic
+    if (!formData.email || !formData.password) {
+      alert("请输入邮箱和密码 (Please enter email and password)");
+      return;
+    }
+    
+    if (!isLogin && !formData.fullName) {
+      alert("请输入您的姓名 (Please enter your full name)");
+      return;
+    }
+
+    // In a real app, you would validate credentials with a backend here
+    onLogin('account');
+  };
 
   return (
     <div className="min-h-screen bg-slate-100 flex items-center justify-center p-4">
@@ -36,19 +62,40 @@ const AuthScreen: React.FC<AuthScreenProps> = ({ onLogin }) => {
           <div className="space-y-4">
             <div className="relative">
                 <Mail className="absolute left-3 top-3 text-slate-400" size={18} />
-                <input type="email" placeholder="Institutional Email (e.g., .edu)" className="w-full pl-10 pr-4 py-2.5 border border-slate-200 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none transition-all"/>
+                <input 
+                  name="email"
+                  type="email" 
+                  value={formData.email}
+                  onChange={handleInputChange}
+                  placeholder="Institutional Email (e.g., .edu)" 
+                  className="w-full pl-10 pr-4 py-2.5 border border-slate-200 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none transition-all"
+                />
             </div>
             <div className="relative">
                 <Lock className="absolute left-3 top-3 text-slate-400" size={18} />
-                <input type="password" placeholder="Password" className="w-full pl-10 pr-4 py-2.5 border border-slate-200 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none transition-all"/>
+                <input 
+                  name="password"
+                  type="password" 
+                  value={formData.password}
+                  onChange={handleInputChange}
+                  placeholder="Password" 
+                  className="w-full pl-10 pr-4 py-2.5 border border-slate-200 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none transition-all"
+                />
             </div>
             {!isLogin && (
                 <div className="relative animate-fade-in">
                     <User className="absolute left-3 top-3 text-slate-400" size={18} />
-                    <input type="text" placeholder="Full Name" className="w-full pl-10 pr-4 py-2.5 border border-slate-200 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none transition-all"/>
+                    <input 
+                      name="fullName"
+                      type="text" 
+                      value={formData.fullName}
+                      onChange={handleInputChange}
+                      placeholder="Full Name" 
+                      className="w-full pl-10 pr-4 py-2.5 border border-slate-200 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none transition-all"
+                    />
                 </div>
             )}
-            <button onClick={() => onLogin('account')} className="w-full bg-blue-600 text-white py-3 rounded-lg font-bold hover:bg-blue-700 transition-colors shadow-lg shadow-blue-200">
+            <button onClick={handleSubmit} className="w-full bg-blue-600 text-white py-3 rounded-lg font-bold hover:bg-blue-700 transition-colors shadow-lg shadow-blue-200">
                 {isLogin ? '进入系统 (Sign In)' : '创建账户 (Create Account)'}
             </button>
             <div className="text-center mt-4">

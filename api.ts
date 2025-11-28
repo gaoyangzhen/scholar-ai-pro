@@ -22,6 +22,37 @@ const API_BASE_URL = getEnvVar('VITE_API_BASE_URL') || "http://localhost:8000";
 
 export const api = {
   /**
+   * 测试模型连接
+   * @param modelId 模型ID
+   * @param apiKey API Key
+   */
+  testConnection: async (modelId: string, apiKey: string): Promise<boolean> => {
+    console.log(`[API] Testing connection for ${modelId}`);
+    
+    if (USE_MOCK_API) {
+        return new Promise((resolve) => {
+            setTimeout(() => {
+                // 模拟简单的成功，如果 key 是 "error" 则失败
+                resolve(apiKey !== 'error');
+            }, 1000);
+        });
+    } else {
+        try {
+            // 尝试请求一个轻量级接口或者专门的 test 接口
+            const response = await fetch(`${API_BASE_URL}/test_connection`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ model: modelId, api_key: apiKey })
+            });
+            return response.ok;
+        } catch (error) {
+            console.error("Connection Test Failed:", error);
+            return false;
+        }
+    }
+  },
+
+  /**
    * 模拟审稿：上传论文并获取分析结果
    * @param file 论文文件
    * @param modelId 选中的模型ID (e.g., 'gpt-4o')

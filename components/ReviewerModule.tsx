@@ -46,6 +46,22 @@ const ReviewerModule: React.FC<ReviewerModuleProps> = ({ selectedModel, apiKey, 
       setIsUploading(true);
 
       try {
+        // --- Feature: Client-side content reading ---
+        // Try to read the file content to display it in the view, instead of using mock content
+        if (file.type === "text/plain" || file.name.endsWith('.md') || file.name.endsWith('.txt')) {
+             const reader = new FileReader();
+             reader.onload = (event) => {
+                 if (event.target?.result) {
+                     setPaperContent(event.target.result as string);
+                 }
+             };
+             reader.readAsText(file);
+        } else {
+            // For binary files (PDF/Word), we can't easily parse them in browser without heavy libraries.
+            // We set a placeholder text to indicate the file is being processed by the backend.
+            setPaperContent(`[File: ${file.name}]\n\nProcessing binary content...\n\n(Note: In this web demo, client-side preview is limited to text files. The backend analysis will process the full document.)\n\n...[Content Analysis in progress]...`);
+        }
+
         // 3. Call API (Pass Model ID and Key)
         const result = await api.uploadManuscript(file, selectedModel.id, apiKey);
 
@@ -106,7 +122,7 @@ const ReviewerModule: React.FC<ReviewerModuleProps> = ({ selectedModel, apiKey, 
                 <div className="inline-flex items-center justify-center gap-2 bg-indigo-50 text-indigo-700 px-3 py-1.5 rounded-full text-xs font-medium mb-8 border border-indigo-100 mx-auto">
                   <Cpu size={12}/> 当前引擎: <span className="font-bold">{selectedModel.name}</span>
                 </div>
-                <input type="file" ref={fileInputRef} onChange={handleFileChange} className="hidden" accept=".pdf,.docx,.txt" />
+                <input type="file" ref={fileInputRef} onChange={handleFileChange} className="hidden" accept=".pdf,.docx,.txt,.md" />
                 <div onClick={handleUploadTrigger} className={`border-2 border-dashed rounded-xl p-8 mb-6 transition-all cursor-pointer group relative flex-1 flex flex-col justify-center items-center ${isUploading ? 'bg-blue-50 border-blue-300 cursor-wait' : 'border-slate-300 hover:bg-slate-50 hover:border-blue-400'}`}>
                   {isUploading ? (
                     <div className="flex flex-col items-center animate-pulse">
@@ -119,7 +135,7 @@ const ReviewerModule: React.FC<ReviewerModuleProps> = ({ selectedModel, apiKey, 
                   ) : (
                     <div className="flex flex-col items-center gap-3">
                       <FileUp className="text-slate-400 group-hover:text-blue-500 transition-colors" size={32}/>
-                      <p className="text-slate-400 group-hover:text-slate-600 font-medium">点击上传 Word / PDF</p>
+                      <p className="text-slate-400 group-hover:text-slate-600 font-medium">点击上传 Word / PDF / TXT</p>
                     </div>
                   )}
                 </div>
