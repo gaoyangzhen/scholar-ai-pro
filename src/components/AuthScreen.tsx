@@ -46,20 +46,16 @@ const AuthScreen: React.FC<AuthScreenProps> = ({ onLogin }) => {
               onLogin('account');
           } else {
               setError(result.error || "Login failed");
+              setLoading(false);
           }
       } else {
           // Register logic simulation
-          setTimeout(() => {
-             // For demo, just pass registration
-             onLogin('account');
-          }, 1000);
+          await new Promise(resolve => setTimeout(resolve, 1000));
+          onLogin('account');
       }
     } catch (err) {
         setError("An unexpected error occurred.");
-    } finally {
-        // Only stop loading if we didn't succeed (success unmounts component)
-        // actually we can just leave it since the parent will unmount us
-        if (error) setLoading(false);
+        setLoading(false);
     }
   };
 
