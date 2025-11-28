@@ -33,40 +33,6 @@ const AuthScreen: React.FC<AuthScreenProps> = ({ onLogin }) => {
     }
     
     if (!isLogin && !formData.fullName) {
-      setError("请输入您的姓名 (Please enter your full name)");
-      return;
-    }
-
-    setLoading(true);
-
-    try {
-      if (isLogin) {
-          const result = await api.login(formData.email, formData.password);
-          if (result.success) {
-              onLogin('account');
-          } else {
-              setError(result.error || "Login failed");
-              setLoading(false);
-          }
-      } else {
-          // Register logic simulation
-          await new Promise(resolve => setTimeout(resolve, 1000));
-          onLogin('account');
-      }
-    } catch (err) {
-        setError("An unexpected error occurred.");
-        setLoading(false);
-    }
-  };
-
-  return (
-    <div className="min-h-screen bg-slate-100 flex items-center justify-center p-4">
-      <div className="bg-white rounded-2xl shadow-xl w-full max-w-md overflow-hidden flex flex-col">
-        <div className="bg-slate-900 p-8 text-center relative overflow-hidden">
-          <div className="absolute top-0 left-0 w-full h-full bg-gradient-to-br from-blue-600/20 to-indigo-600/20 z-0"></div>
-          <Sparkles className="text-blue-400 mx-auto mb-4 relative z-10" size={48} />
-          <h1 className="text-2xl font-bold text-white relative z-10">ScholarAI Pro</h1>
-          <p className="text-blue-200 mt-2 text-sm relative z-10">你的 SCI/EI 论文智能发表助手</p>
         </div>
         <div className="p-8">
           <div className="flex gap-4 mb-6 border-b border-slate-100 pb-2">

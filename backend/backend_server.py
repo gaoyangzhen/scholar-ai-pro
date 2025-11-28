@@ -1,15 +1,23 @@
 import os
 import uvicorn
-from fastapi import FastAPI, UploadFile, File, Form, HTTPException
+from fastapi import FastAPI, UploadFile, File, Form, HTTPException, Depends, Header
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import StreamingResponse
 import google.generativeai as genai
 from dotenv import load_dotenv
-from pydantic import BaseModel
+from pydantic import BaseModel, EmailStr
 from typing import Optional
+from sqlalchemy.orm import Session
+
+# Import database and auth modules
+from database import init_db, get_db, User, HistoryRecord, GlossaryTerm
+from auth import verify_password, get_password_hash, create_access_token, verify_token
 
 # Load environment variables
 load_dotenv()
+
+# Initialize database
+init_db()
 
 app = FastAPI()
 
@@ -22,10 +30,44 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+# Pydantic models
 class PolishRequest(BaseModel):
     text: str
     model: str
     apiKey: Optional[str] = None
+
+class RegisterRequest(BaseModel):
+    email: EmailStr
+    password: str
+    fullName: Optional[str] = None
+
+class LoginRequest(BaseModel):
+    email: EmailStr
+    password: str
+
+class HistorySaveRequest(BaseModel):
+    type: str
+    title: str
+    content: Optional[dict] = None
+    score: Optional[int] = None
+    words: Optional[int] = None
+
+# Helper: Get current user from token
+def get_current_user(authorization: Optional[str] = Header(None), db: Session = Depends(get_db)):
+    if not authorization or not authorization.startswith("Bearer "):
+        raise HTTPException(status_code=401, detail="Not authenticated")
+    
+    token = authorization.replace("Bearer ", "")
+    payload = verify_token(token)
+    
+    if not payload:
+        raise HTTPException(status_code=401, detail="Invalid token")
+    
+    user = db.query(User).filter(User.email == payload.get("sub")).first()
+    if not user:
+        raise HTTPException(status_code=401, detail="User not found")
+    
+    return user
 
 def get_gemini_model(model_name: str, api_key: str):
     genai.configure(api_key=api_key)
@@ -33,6 +75,70 @@ def get_gemini_model(model_name: str, api_key: str):
     # For now, assuming model_name is compatible or using a default
     target_model = "gemini-1.5-pro" if "pro" in model_name else "gemini-1.5-flash"
     return genai.GenerativeModel(target_model)
+
+# ===== Authentication Endpoints =====
+
+@app.post("/api/register")
+async def register(request: RegisterRequest, db: Session = Depends(get_db)):
+    """Register a new user"""
+    # Check if user already exists
+    existing_user = db.query(User).filter(User.email == request.email).first()
+    if existing_user:
+        raise HTTPException(status_code=400, detail="Email already registered")
+    
+    # Validate password length
+    if len(request.password) < 6:
+        raise HTTPException(status_code=400, detail="Password must be at least 6 characters")
+    
+    # Create new user
+    hashed_password = get_password_hash(request.password)
+    new_user = User(
+        email=request.email,
+        password_hash=hashed_password,
+        full_name=request.fullName
+    )
+    
+    db.add(new_user)
+    db.commit()
+    db.refresh(new_user)
+    
+    # Create access token
+    access_token = create_access_token(data={"sub": new_user.email})
+    
+    return {
+        "success": True,
+        "token": access_token,
+        "user": {
+            "email": new_user.email,
+            "fullName": new_user.full_name,
+            "id": new_user.id
+        }
+    }
+
+@app.post("/api/login")
+async def login(request: LoginRequest, db: Session = Depends(get_db)):
+    """Login user"""
+    # Find user
+    user = db.query(User).filter(User.email == request.email).first()
+    
+    if not user or not verify_password(request.password, user.password_hash):
+        raise HTTPException(status_code=401, detail="Incorrect email or password")
+    
+    # Create access token
+    access_token = create_access_token(data={"sub": user.email})
+    
+    return {
+        "success": True,
+        "token": access_token,
+        "user": {
+            "email": user.email,
+            "fullName": user.full_name,
+            "id": user.id
+        }
+    }
+
+# ===== AI Endpoints =====
+
 
 @app.post("/api/polish")
 async def polish_text(request: PolishRequest):
@@ -176,6 +282,55 @@ Confirm you have read the ENTIRE document by mentioning specific content from di
     except Exception as e:
         print(f"[ERROR] Analysis failed: {str(e)}")
         raise HTTPException(status_code=500, detail=f"Analysis failed: {str(e)}")
+
+
+# ===== User Data Endpoints =====
+
+@app.post("/api/history/save")
+async def save_history(
+    request: HistorySaveRequest, 
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    """Save a history record for the current user"""
+    new_record = HistoryRecord(
+        user_id=current_user.id,
+        type=request.type,
+        title=request.title,
+        content=request.content,
+        score=request.score,
+        words=request.words
+    )
+    
+    db.add(new_record)
+    db.commit()
+    db.refresh(new_record)
+    
+    return {"success": True, "id": new_record.id}
+
+@app.get("/api/history")
+async def get_history(
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    """Get all history records for the current user"""
+    records = db.query(HistoryRecord).filter(
+        HistoryRecord.user_id == current_user.id
+    ).order_by(HistoryRecord.created_at.desc()).all()
+    
+    return {
+        "records": [
+            {
+                "id": r.id,
+                "type": r.type,
+                "title": r.title,
+                "date": r.created_at.isoformat(),
+                "score": r.score,
+                "words": r.words
+            }
+            for r in records
+        ]
+    }
 
 if __name__ == "__main__":
     uvicorn.run("backend_server:app", host="0.0.0.0", port=8000, reload=True)

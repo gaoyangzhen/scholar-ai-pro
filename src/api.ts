@@ -26,7 +26,7 @@ export const api = {
    * @param email 邮箱
    * @param password 密码
    */
-  login: async (email: string, password: string): Promise<{ success: boolean; user?: any; error?: string }> => {
+  login: async (email: string, password: string): Promise<{ success: boolean; user?: any; token?: string; error?: string }> => {
     console.log(`[API] Login attempt: ${email}`);
 
     if (USE_MOCK_API) {
@@ -45,13 +45,14 @@ export const api = {
           // Simulate successful login
           resolve({
             success: true,
-            user: { name: "Dr. Researcher", email: email, role: "account" }
+            user: { name: "Dr. Researcher", email: email, role: "account" },
+            token: "mock-jwt-token"  // Mock token
           });
         }, 800);
       });
     } else {
       try {
-        const response = await fetch(`${API_BASE_URL}/login`, {
+        const response = await fetch(`${API_BASE_URL}/api/login`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ email, password })
@@ -60,9 +61,63 @@ export const api = {
         if (!response.ok) {
           return { success: false, error: data.detail || "Login failed" };
         }
-        return { success: true, user: data.user };
+        // Store token
+        if (data.token) {
+          localStorage.setItem('auth-token', data.token);
+        }
+        return { success: true, user: data.user, token: data.token };
       } catch (error) {
         return { success: false, error: "无法连接到服务器 (Connection failed)" };
+      }
+    }
+  },
+
+  /**
+   * 用户注册
+   * @param email 邮箱
+   * @param password 密码
+   * @param fullName 姓名
+   */
+  register: async (email: string, password: string, fullName?: string): Promise<{ success: boolean; user?: any; token?: string; error?: string }> => {
+    console.log(`[API] Register attempt: ${email}`);
+
+    if (USE_MOCK_API) {
+      return new Promise((resolve) => {
+        setTimeout(() => {
+          const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+          if (!emailRegex.test(email)) {
+            resolve({ success: false, error: "邮箱格式不正确" });
+            return;
+          }
+          if (password.length < 6) {
+            resolve({ success: false, error: "密码长度至少需要6位" });
+            return;
+          }
+          resolve({
+            success: true,
+            user: { name: fullName || "User", email: email, role: "account" },
+            token: "mock-jwt-token"
+          });
+        }, 1000);
+      });
+    } else {
+      try {
+        const response = await fetch(`${API_BASE_URL}/api/register`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ email, password, fullName })
+        });
+        const data = await response.json();
+        if (!response.ok) {
+          return { success: false, error: data.detail || "Registration failed" };
+        }
+        // Store token
+        if (data.token) {
+          localStorage.setItem('auth-token', data.token);
+        }
+        return { success: true, user: data.user, token: data.token };
+      } catch (error) {
+        return { success: false, error: "无法连接到服务器" };
       }
     }
   },
