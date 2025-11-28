@@ -22,6 +22,52 @@ const API_BASE_URL = getEnvVar('VITE_API_BASE_URL') || "http://localhost:8000";
 
 export const api = {
   /**
+   * 用户登录
+   * @param email 邮箱
+   * @param password 密码
+   */
+  login: async (email: string, password: string): Promise<{ success: boolean; user?: any; error?: string }> => {
+    console.log(`[API] Login attempt: ${email}`);
+    
+    if (USE_MOCK_API) {
+      return new Promise((resolve) => {
+        setTimeout(() => {
+          // MOCK Validation Logic
+          const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+          if (!emailRegex.test(email)) {
+            resolve({ success: false, error: "邮箱格式不正确 (Invalid email format)" });
+            return;
+          }
+          if (password.length < 6) {
+            resolve({ success: false, error: "密码长度至少需要6位 (Password too short)" });
+            return;
+          }
+          // Simulate successful login
+          resolve({ 
+            success: true, 
+            user: { name: "Dr. Researcher", email: email, role: "account" } 
+          });
+        }, 800);
+      });
+    } else {
+      try {
+        const response = await fetch(`${API_BASE_URL}/login`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ email, password })
+        });
+        const data = await response.json();
+        if (!response.ok) {
+           return { success: false, error: data.detail || "Login failed" };
+        }
+        return { success: true, user: data.user };
+      } catch (error) {
+        return { success: false, error: "无法连接到服务器 (Connection failed)" };
+      }
+    }
+  },
+
+  /**
    * 测试模型连接
    * @param modelId 模型ID
    * @param apiKey API Key
@@ -32,8 +78,28 @@ export const api = {
     if (USE_MOCK_API) {
         return new Promise((resolve) => {
             setTimeout(() => {
-                // 模拟简单的成功，如果 key 是 "error" 则失败
-                resolve(apiKey !== 'error');
+                // === MOCK 模式下的严格校验 ===
+                // 即使是模拟，也要检查 Key 的格式，防止用户随便输入
+                let isValid = false;
+                
+                if (apiKey === 'error') {
+                   isValid = false;
+                } else if (modelId.includes('gemini')) {
+                   // Gemini keys start with AIza
+                   isValid = apiKey.startsWith('AIza') && apiKey.length > 20;
+                } else if (modelId.includes('gpt')) {
+                   // OpenAI keys often start with sk-
+                   isValid = apiKey.startsWith('sk-') && apiKey.length > 30;
+                } else if (modelId.includes('claude')) {
+                   // Claude keys start with sk-ant
+                   isValid = apiKey.startsWith('sk-ant') && apiKey.length > 30;
+                } else {
+                   // Generic check for others
+                   isValid = apiKey.length > 10;
+                }
+
+                console.log(`[API] Mock Validation for ${modelId}: ${isValid ? 'Pass' : 'Fail (Invalid Format)'}`);
+                resolve(isValid);
             }, 1000);
         });
     } else {
