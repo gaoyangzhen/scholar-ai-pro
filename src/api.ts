@@ -17,8 +17,8 @@ const getEnvVar = (key: string, defaultValue: string = '') => {
   }
 };
 
-const USE_MOCK_API = getEnvVar('VITE_USE_MOCK') === 'false' ? false : true; 
-const API_BASE_URL = getEnvVar('VITE_API_BASE_URL') || "http://localhost:8000"; 
+const USE_MOCK_API = getEnvVar('VITE_USE_MOCK') === 'false' ? false : true;
+const API_BASE_URL = getEnvVar('VITE_API_BASE_URL') || "http://localhost:8000";
 
 export const api = {
   /**
@@ -28,7 +28,7 @@ export const api = {
    */
   login: async (email: string, password: string): Promise<{ success: boolean; user?: any; error?: string }> => {
     console.log(`[API] Login attempt: ${email}`);
-    
+
     if (USE_MOCK_API) {
       return new Promise((resolve) => {
         setTimeout(() => {
@@ -43,9 +43,9 @@ export const api = {
             return;
           }
           // Simulate successful login
-          resolve({ 
-            success: true, 
-            user: { name: "Dr. Researcher", email: email, role: "account" } 
+          resolve({
+            success: true,
+            user: { name: "Dr. Researcher", email: email, role: "account" }
           });
         }, 800);
       });
@@ -58,7 +58,7 @@ export const api = {
         });
         const data = await response.json();
         if (!response.ok) {
-           return { success: false, error: data.detail || "Login failed" };
+          return { success: false, error: data.detail || "Login failed" };
         }
         return { success: true, user: data.user };
       } catch (error) {
@@ -74,47 +74,47 @@ export const api = {
    */
   testConnection: async (modelId: string, apiKey: string): Promise<boolean> => {
     console.log(`[API] Testing connection for ${modelId}`);
-    
-    if (USE_MOCK_API) {
-        return new Promise((resolve) => {
-            setTimeout(() => {
-                // === MOCK 模式下的严格校验 ===
-                // 即使是模拟，也要检查 Key 的格式，防止用户随便输入
-                let isValid = false;
-                
-                if (apiKey === 'error') {
-                   isValid = false;
-                } else if (modelId.includes('gemini')) {
-                   // Gemini keys start with AIza
-                   isValid = apiKey.startsWith('AIza') && apiKey.length > 20;
-                } else if (modelId.includes('gpt')) {
-                   // OpenAI keys often start with sk-
-                   isValid = apiKey.startsWith('sk-') && apiKey.length > 30;
-                } else if (modelId.includes('claude')) {
-                   // Claude keys start with sk-ant
-                   isValid = apiKey.startsWith('sk-ant') && apiKey.length > 30;
-                } else {
-                   // Generic check for others
-                   isValid = apiKey.length > 10;
-                }
 
-                console.log(`[API] Mock Validation for ${modelId}: ${isValid ? 'Pass' : 'Fail (Invalid Format)'}`);
-                resolve(isValid);
-            }, 1000);
-        });
+    if (USE_MOCK_API) {
+      return new Promise((resolve) => {
+        setTimeout(() => {
+          // === MOCK 模式下的严格校验 ===
+          // 即使是模拟，也要检查 Key 的格式，防止用户随便输入
+          let isValid = false;
+
+          if (apiKey === 'error') {
+            isValid = false;
+          } else if (modelId.includes('gemini')) {
+            // Gemini keys start with AIza
+            isValid = apiKey.startsWith('AIza') && apiKey.length > 20;
+          } else if (modelId.includes('gpt')) {
+            // OpenAI keys often start with sk-
+            isValid = apiKey.startsWith('sk-') && apiKey.length > 30;
+          } else if (modelId.includes('claude')) {
+            // Claude keys start with sk-ant
+            isValid = apiKey.startsWith('sk-ant') && apiKey.length > 30;
+          } else {
+            // Generic check for others
+            isValid = apiKey.length > 10;
+          }
+
+          console.log(`[API] Mock Validation for ${modelId}: ${isValid ? 'Pass' : 'Fail (Invalid Format)'}`);
+          resolve(isValid);
+        }, 1000);
+      });
     } else {
-        try {
-            // 尝试请求一个轻量级接口或者专门的 test 接口
-            const response = await fetch(`${API_BASE_URL}/test_connection`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ model: modelId, api_key: apiKey })
-            });
-            return response.ok;
-        } catch (error) {
-            console.error("Connection Test Failed:", error);
-            return false;
-        }
+      try {
+        // 尝试请求一个轻量级接口或者专门的 test 接口
+        const response = await fetch(`${API_BASE_URL}/test_connection`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ model: modelId, api_key: apiKey })
+        });
+        return response.ok;
+      } catch (error) {
+        console.error("Connection Test Failed:", error);
+        return false;
+      }
     }
   },
 
@@ -131,12 +131,12 @@ export const api = {
       // === MOCK 模式 ===
       return new Promise((resolve) => {
         setTimeout(() => {
-          resolve({ 
-            success: true, 
-            data: { 
+          resolve({
+            success: true,
+            data: {
               diffs: initialDiffs,
-              score: 81.3 
-            } 
+              score: 81.3
+            }
           });
         }, 1500);
       });
@@ -146,9 +146,9 @@ export const api = {
         const formData = new FormData();
         formData.append('file', file);
         formData.append('model', modelId); // 告诉后端用什么模型
-        if (apiKey) formData.append('api_key', apiKey); // 传递密钥
+        if (apiKey) formData.append('apiKey', apiKey); // 传递密钥
 
-        const response = await fetch(`${API_BASE_URL}/upload_paper`, {
+        const response = await fetch(`${API_BASE_URL}/api/analyze-upload`, {
           method: 'POST',
           body: formData,
         });
@@ -177,24 +177,37 @@ export const api = {
       return new Promise((resolve) => {
         setTimeout(() => {
           resolve("The model was implemented using the PyTorch framework. During the data preprocessing stage, all missing values were excluded. Ultimately, the results indicated an accuracy of 95%. This demonstrates the robustness of our approach under varied conditions.");
-        }, 1000); 
+        }, 1000);
       });
     } else {
       // === 真实模式 ===
       try {
-        const response = await fetch(`${API_BASE_URL}/optimize_text`, {
+        const response = await fetch(`${API_BASE_URL}/api/polish`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ 
-            text: text, 
+          body: JSON.stringify({
+            text: text,
             model: modelId,
-            api_key: apiKey 
+            apiKey: apiKey
           }),
         });
 
         if (!response.ok) throw new Error('Optimization failed');
-        const data = await response.json();
-        return data.optimized_text;
+
+        // Handle streaming response by reading the full text
+        const reader = response.body?.getReader();
+        if (!reader) return "Error: No response body";
+
+        let result = '';
+        const decoder = new TextDecoder();
+
+        while (true) {
+          const { done, value } = await reader.read();
+          if (done) break;
+          result += decoder.decode(value, { stream: true });
+        }
+
+        return result;
       } catch (error) {
         console.error("API Error:", error);
         return "Error: Could not connect to the optimization service.";
