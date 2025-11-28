@@ -78,42 +78,104 @@ async def analyze_upload(
         raise HTTPException(status_code=401, detail="API Key is required. Please provide it in the UI or set GEMINI_API_KEY in backend/.env")
 
     try:
+        import pdfplumber
+        import io
+        
         # Read file content
         content = await file.read()
-        # For simplicity, assuming text/pdf content. 
-        # In a real app, you'd use a PDF parser or similar.
-        # Here we'll just try to decode as text for demonstration if it's not binary
-        # Or use Gemini's file API if needed. 
-        # For this "one-click" setup, let's assume we send the text content if possible,
-        # or just a placeholder if we can't parse it easily without more libs.
+        full_text = ""
+        pages_analyzed = 0
         
-        # NOTE: Real PDF parsing requires pypdf or similar. 
-        # We will assume the user wants a simple mock-up or text analysis for now.
+        # Parse PDF content
+        if file.filename.endswith('.pdf'):
+            try:
+                with pdfplumber.open(io.BytesIO(content)) as pdf:
+                    pages_analyzed = len(pdf.pages)
+                    for page in pdf.pages:
+                        page_text = page.extract_text()
+                        if page_text:
+                            full_text += page_text + "\n\n"
+                
+                print(f"[INFO] Extracted {len(full_text)} characters from {pages_analyzed} pages")
+            except Exception as pdf_error:
+                print(f"[WARNING] PDF parsing failed: {pdf_error}")
+                raise HTTPException(status_code=400, detail=f"PDF parsing failed: {str(pdf_error)}")
         
+        # Parse text files
+        elif file.filename.endswith(('.txt', '.md')):
+            full_text = content.decode('utf-8', errors='ignore')
+            pages_analyzed = 1
+        
+        else:
+            raise HTTPException(status_code=400, detail="Unsupported file format. Please upload PDF, TXT, or MD files.")
+        
+        if not full_text.strip():
+            raise HTTPException(status_code=400, detail="No text content found in the document.")
+        
+        # Configure Gemini
+        import google.generativeai as genai
         genai.configure(api_key=final_api_key)
         target_model = "gemini-1.5-pro" if "pro" in model else "gemini-1.5-flash"
         gemini_model = genai.GenerativeModel(target_model)
         
-        # Simple prompt
-        prompt = "Analyze this academic paper and provide a review report."
+        # Create comprehensive review prompt
+        prompt = f"""You are an expert reviewer for top-tier academic journals (e.g., Nature, Science, IEEE).
+
+Please review this academic paper comprehensively:
+
+Document Statistics:
+- Total Characters: {len(full_text)}
+- Total Words: {len(full_text.split())}
+- Total Pages: {pages_analyzed}
+
+Full Document Content:
+{full_text[:100000]}
+
+Please provide:
+1. Overall Score (0-100)
+2. Detailed review covering:
+   - Novelty & Contribution
+   - Methodology Rigor
+   - Results & Discussion Quality
+   - Language & Structure
+3. Specific improvement suggestions with line/section references
+
+Confirm you have read the ENTIRE document by mentioning specific content from different sections."""
         
-        # If we can't easily parse the PDF here without extra libs, 
-        # we might just send a dummy response or try to use Gemini's file API (which requires upload).
-        # Let's return a structured mock response for the "Reviewer" module to consume,
-        # or try to generate something if it's a text file.
+        # Generate AI review
+        response = gemini_model.generate_content(prompt)
+        
+        # Parse response (simplified - in production you'd want better parsing)
+        review_text = response.text
+        
+        # Extract score (basic pattern matching - improve in production)
+        score = 85  # Default if not found
+        import re
+        score_match = re.search(r'(?:score|rating):\s*(\d+)', review_text, re.IGNORECASE)
+        if score_match:
+            score = int(score_match.group(1))
         
         response_data = {
-            "score": 85,
-            "diffs": [
-                {"original": "Bad grammar", "revised": "Improved grammar", "type": "grammar", "explanation": "Fixed grammar"}
-            ],
-            "review": "This is a placeholder review. Real PDF parsing requires additional libraries."
+            "score": score,
+            "review": review_text,
+            "pages_analyzed": pages_analyzed,
+            "word_count": len(full_text.split()),
+            "character_count": len(full_text),
+            "diffs": [],  # You can enhance this to extract specific suggestions
+            "metadata": {
+                "filename": file.filename,
+                "model_used": target_model,
+                "analysis_complete": True
+            }
         }
         
         return response_data
 
+    except HTTPException:
+        raise
     except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+        print(f"[ERROR] Analysis failed: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Analysis failed: {str(e)}")
 
 if __name__ == "__main__":
     uvicorn.run("backend_server:app", host="0.0.0.0", port=8000, reload=True)

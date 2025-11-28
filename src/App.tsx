@@ -27,17 +27,23 @@ const App: React.FC = () => {
   const [history, setHistory] = useState<NavigationState[]>([{ module: 'reviewer', step: 'upload', editorMode: 'none' }]);
   const [historyIndex, setHistoryIndex] = useState(0);
 
-  // Data History (Saved Records)
-  const [savedRecords, setSavedRecords] = useState<HistoryRecord[]>(mockHistoryData);
+  // Data History (Saved Records) - with localStorage persistence
+  const [savedRecords, setSavedRecords] = useState<HistoryRecord[]>(() => {
+    const saved = localStorage.getItem('scholar-ai-history');
+    return saved ? JSON.parse(saved) : mockHistoryData;
+  });
 
   // Models State
   const [models, setModels] = useState<Model[]>(initialModels);
   const [selectedModel, setSelectedModel] = useState<Model>(initialModels[0]);
   const [showModelMenu, setShowModelMenu] = useState(false);
   
-  // Settings & API Keys
+  // Settings & API Keys - with localStorage persistence
   const [showSettings, setShowSettings] = useState(false);
-  const [apiKeys, setApiKeys] = useState<Record<string, string>>({});
+  const [apiKeys, setApiKeys] = useState<Record<string, string>>(() => {
+    const saved = localStorage.getItem('scholar-ai-apikeys');
+    return saved ? JSON.parse(saved) : {};
+  });
 
   const currentView = history[historyIndex];
 
@@ -79,7 +85,9 @@ const App: React.FC = () => {
 
   // --- API Key & Model Management Logic ---
   const handleUpdateApiKey = (modelId: string, value: string) => {
-    setApiKeys(prev => ({...prev, [modelId]: value}));
+    const updatedKeys = {...apiKeys, [modelId]: value};
+    setApiKeys(updatedKeys);
+    localStorage.setItem('scholar-ai-apikeys', JSON.stringify(updatedKeys));
   };
 
   const handleAddModel = (newModel: Model & { key?: string }) => {
@@ -112,7 +120,9 @@ const App: React.FC = () => {
       score: data.score,
       words: data.words
     };
-    setSavedRecords([newRecord, ...savedRecords]);
+    const updatedRecords = [newRecord, ...savedRecords];
+    setSavedRecords(updatedRecords);
+    localStorage.setItem('scholar-ai-history', JSON.stringify(updatedRecords));
     alert("已保存到历史记录！(Saved to History)");
   };
 
