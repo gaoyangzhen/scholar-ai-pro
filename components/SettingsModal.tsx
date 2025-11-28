@@ -113,6 +113,7 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ models, apiKeys, onClose,
                         <button 
                            onClick={() => handleTestConnection(model.id, apiKeys[model.id])}
                            disabled={!apiKeys[model.id] || testingModelId === model.id}
+                           title="Test Connection"
                            className={`px-3 py-2 rounded-lg border text-sm font-medium transition-all flex items-center gap-1.5 min-w-[80px] justify-center
                              ${testResults[model.id] === 'success' 
                                ? 'bg-green-50 text-green-600 border-green-200' 
