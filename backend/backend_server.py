@@ -3,7 +3,8 @@ import uvicorn
 from fastapi import FastAPI, UploadFile, File, Form, HTTPException, Depends, Header
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import StreamingResponse
-import google.generativeai as genai
+import httpx
+import json
 from dotenv import load_dotenv
 from pydantic import BaseModel, EmailStr
 from typing import Optional, List
@@ -76,11 +77,51 @@ def get_current_user(authorization: Optional[str] = Header(None), db: Session = 
     
     return user
 
-def get_gemini_model(model_name: str, api_key: str):
-    genai.configure(api_key=api_key)
-    # Map frontend model names to Gemini model names if necessary
+GEMINI_BASE_URL = "https://generativelanguage.googleapis.com/v1beta/models"
+
+async def generate_gemini_content(prompt: str, model_name: str, api_key: str) -> str:
     target_model = "gemini-1.5-pro" if "pro" in model_name else "gemini-1.5-flash"
-    return genai.GenerativeModel(target_model)
+    url = f"{GEMINI_BASE_URL}/{target_model}:generateContent?key={api_key}"
+    
+    payload = {
+        "contents": [{"parts": [{"text": prompt}]}]
+    }
+    
+    async with httpx.AsyncClient() as client:
+        response = await client.post(url, json=payload, timeout=60.0)
+        if response.status_code != 200:
+            raise Exception(f"Gemini API Error: {response.text}")
+        
+        data = response.json()
+        try:
+            return data["candidates"][0]["content"]["parts"][0]["text"]
+        except (KeyError, IndexError):
+            return ""
+
+async def stream_gemini_content(prompt: str, model_name: str, api_key: str):
+    target_model = "gemini-1.5-pro" if "pro" in model_name else "gemini-1.5-flash"
+    url = f"{GEMINI_BASE_URL}/{target_model}:streamGenerateContent?alt=sse&key={api_key}"
+    
+    payload = {
+        "contents": [{"parts": [{"text": prompt}]}]
+    }
+    
+    async with httpx.AsyncClient() as client:
+        async with client.stream("POST", url, json=payload, timeout=60.0) as response:
+            if response.status_code != 200:
+                error_text = await response.read()
+                raise Exception(f"Gemini API Error: {error_text.decode()}")
+            
+            async for line in response.aiter_lines():
+                if line.startswith("data: "):
+                    json_str = line[6:]
+                    try:
+                        data = json.loads(json_str)
+                        text = data["candidates"][0]["content"]["parts"][0]["text"]
+                        if text:
+                            yield text
+                    except:
+                        pass
 
 # ===== Authentication Endpoints =====
 
@@ -193,8 +234,6 @@ async def polish_text(
         pass # Ignore auth errors for polish, just skip glossary
 
     try:
-        model = get_gemini_model(request.model, api_key)
-        
         prompt = f"""
         Please polish the following academic text to make it more professional, clear, and concise. 
         Maintain the original meaning but improve the flow and vocabulary.{glossary_context}
@@ -203,14 +242,10 @@ async def polish_text(
         {request.text}
         """
         
-        response = model.generate_content(prompt, stream=True)
-        
-        async def stream_generator():
-            for chunk in response:
-                if chunk.text:
-                    yield chunk.text
-                    
-        return StreamingResponse(stream_generator(), media_type="text/plain")
+        return StreamingResponse(
+            stream_gemini_content(prompt, request.model, api_key), 
+            media_type="text/plain"
+        )
         
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
@@ -239,8 +274,6 @@ async def translate_text(
         pass 
 
     try:
-        model = get_gemini_model(request.model, api_key)
-        
         prompt = f"""
         Please translate the following academic text to {request.targetLang}.
         Ensure accuracy and academic tone.{glossary_context}
@@ -249,14 +282,10 @@ async def translate_text(
         {request.text}
         """
         
-        response = model.generate_content(prompt, stream=True)
-        
-        async def stream_generator():
-            for chunk in response:
-                if chunk.text:
-                    yield chunk.text
-                    
-        return StreamingResponse(stream_generator(), media_type="text/plain")
+        return StreamingResponse(
+            stream_gemini_content(prompt, request.model, api_key), 
+            media_type="text/plain"
+        )
         
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
@@ -309,11 +338,6 @@ async def analyze_upload(
         if not full_text.strip():
             raise HTTPException(status_code=400, detail="No text content found in the document.")
         
-        # Configure Gemini
-        genai.configure(api_key=final_api_key)
-        target_model = "gemini-1.5-pro" if "pro" in model else "gemini-1.5-flash"
-        gemini_model = genai.GenerativeModel(target_model)
-        
         # Create comprehensive review prompt
         prompt = f"""You are an expert reviewer for top-tier academic journals (e.g., Nature, Science, IEEE).
 
@@ -339,10 +363,7 @@ Please provide:
 Confirm you have read the ENTIRE document by mentioning specific content from different sections."""
         
         # Generate AI review
-        response = gemini_model.generate_content(prompt)
-        
-        # Parse response (simplified - in production you'd want better parsing)
-        review_text = response.text
+        review_text = await generate_gemini_content(prompt, model, final_api_key)
         
         # Extract score (basic pattern matching - improve in production)
         score = 85  # Default if not found
@@ -404,8 +425,6 @@ async def chat_doc(
                 context_text = content.decode('utf-8', errors='ignore')
         
         # Construct prompt
-        model_instance = get_gemini_model(model, final_api_key)
-        
         prompt = f"""
         You are an intelligent academic assistant. 
         
@@ -417,8 +436,7 @@ async def chat_doc(
         Please answer the question based on the provided document context. If the answer is not in the context, use your general knowledge but mention that it's not in the document.
         """
         
-        response = model_instance.generate_content(prompt)
-        return response.text
+        return await generate_gemini_content(prompt, model, final_api_key)
 
     except Exception as e:
         print(f"ChatDoc Error: {e}")
