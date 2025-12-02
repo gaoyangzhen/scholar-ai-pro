@@ -23,6 +23,7 @@ class User(Base):
     # Relationships
     history_records = relationship("HistoryRecord", back_populates="user")
     glossary_terms = relationship("GlossaryTerm", back_populates="user")
+    reference_documents = relationship("ReferenceDocument", back_populates="user")
 
 # History record model
 class HistoryRecord(Base):
@@ -46,13 +47,27 @@ class GlossaryTerm(Base):
     
     id = Column(Integer, primary_key=True, index=True)
     user_id = Column(Integer, ForeignKey("users.id"), nullable=False)
-    chinese = Column(String, nullable=False)
-    english = Column(String, nullable=False)
-    note = Column(String, nullable=True)
+    source = Column(String, nullable=False)
+    target = Column(String, nullable=False)
+    category = Column(String, nullable=True)
     created_at = Column(DateTime, default=datetime.utcnow)
     
     # Relationship
     user = relationship("User", back_populates="glossary_terms")
+
+# Reference document model
+class ReferenceDocument(Base):
+    __tablename__ = "reference_documents"
+    
+    id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(Integer, ForeignKey("users.id"), nullable=False)
+    filename = Column(String, nullable=False)
+    file_path = Column(String, nullable=False)  # Path to stored file
+    file_type = Column(String, nullable=False)  # pdf, txt, md
+    upload_date = Column(DateTime, default=datetime.utcnow)
+    
+    # Relationship
+    user = relationship("User", back_populates="reference_documents")
 
 # Create all tables
 def init_db():

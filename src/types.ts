@@ -42,6 +42,14 @@ export interface Chapter {
   children?: Chapter[];
 }
 
+export interface ReferenceDocument {
+  id: string;
+  filename: string;
+  fileType: string;
+  uploadDate: string;
+  size?: string;
+}
+
 export interface GlossaryTerm {
   id: string;
   source: string;

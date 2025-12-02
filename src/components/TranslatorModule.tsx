@@ -34,8 +34,9 @@ const TranslatorModule: React.FC<TranslatorModuleProps> = ({ selectedModel, apiK
     setTargetText(''); // Clear previous result
 
     try {
-      const result = await api.translate(sourceText, targetLang, selectedModel.id, apiKey);
-      setTargetText(result);
+      await api.translate(sourceText, targetLang, selectedModel.id, apiKey, (chunk) => {
+        setTargetText(prev => prev + chunk);
+      });
     } catch (error) {
       setTargetText('Translation failed. Please try again.');
     } finally {

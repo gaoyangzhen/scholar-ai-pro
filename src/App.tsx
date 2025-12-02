@@ -11,7 +11,7 @@ import EditorModule from './components/EditorModule';
 import KnowledgeBaseModule from './components/KnowledgeBaseModule';
 import HistoryModule from './components/HistoryModule';
 import TranslatorModule from './components/TranslatorModule';
-import GlossaryModule from './components/GlossaryModule';
+import ChatDocModule from './components/ChatDocModule';
 import SettingsModal from './components/SettingsModal';
 import Sidebar from './components/Sidebar';
 import { initialModels, mockHistoryData } from './constants';
@@ -228,7 +228,7 @@ const App: React.FC = () => {
                     checkGuestLimit={() => checkGuestLimit('editor')}
                 />
             )}
-            {currentView.module === 'glossary' && <GlossaryModule />}
+            {currentView.module === 'chatdoc' && <ChatDocModule selectedModel={selectedModel} apiKey={currentApiKey} />}
             {currentView.module === 'kb' && <KnowledgeBaseModule userMode={userMode} />}
             {currentView.module === 'history' && <HistoryModule savedRecords={savedRecords} />}
         </div>

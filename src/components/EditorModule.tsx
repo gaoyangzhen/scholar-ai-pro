@@ -104,20 +104,12 @@ const EditorModule: React.FC<EditorModuleProps> = ({ selectedModel, apiKey, docM
     setOutputText(''); // Clear previous result
 
     try {
-      // 3. Call API (Fetch full text)
-      const resultText = await api.polishText(inputText, selectedModel.id, apiKey);
+      // 3. Call API with Streaming Callback
+      await api.polishText(inputText, selectedModel.id, apiKey, (chunk) => {
+        setOutputText(prev => prev + chunk);
+      });
       
-      // 4. Simulate Typing Effect (Optional, for UX)
-      // Even with real API data, a typing effect looks nice.
-      let i = 0;
-      const interval = setInterval(() => {
-          setOutputText(prev => prev + resultText.charAt(i));
-          i++;
-          if (i >= resultText.length) {
-              clearInterval(interval);
-              setIsProcessing(false);
-          }
-      }, 20); // Fast typing
+      setIsProcessing(false);
 
     } catch (error) {
       console.error("Optimize error", error);

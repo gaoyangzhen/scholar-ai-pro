@@ -2,7 +2,7 @@ import React from 'react';
 import { 
   Sparkles, FileText, BookOpen, Database, Clock, 
   Cpu, ChevronDown, CheckCircle, Plus, Settings, LogOut,
-  Languages, Book
+  Languages, Book, Bot
 } from 'lucide-react';
 import { NavigationState, UserMode, Model } from '../types';
 
@@ -67,10 +67,10 @@ const Sidebar: React.FC<SidebarProps> = ({
             onClick={() => navigateTo({ ...currentView, module: 'translator' })}
           />
           <SidebarItem 
-            icon={<Book size={20}/>} 
-            label="术语库 (Glossary)" 
-            active={currentView.module === 'glossary'} 
-            onClick={() => navigateTo({ ...currentView, module: 'glossary' })}
+            icon={<Bot size={20}/>} 
+            label="文档对话 (ChatDoc)" 
+            active={currentView.module === 'chatdoc'} 
+            onClick={() => navigateTo({ ...currentView, module: 'chatdoc' })}
           />
           <SidebarItem 
             icon={<Database size={20}/>} 
@@ -160,7 +160,7 @@ const Sidebar: React.FC<SidebarProps> = ({
             </button>
           </div>
         </div>
-      </aside>
+    </aside>
   );
 };
 

@@ -3,7 +3,8 @@ uvicorn
 google-generativeai
 python-multipart
 python-dotenv
-pdfplumber
+pypdf
 sqlalchemy
 passlib[bcrypt]
 python-jose[cryptography]
+email-validator

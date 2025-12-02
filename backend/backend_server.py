@@ -6,11 +6,12 @@ from fastapi.responses import StreamingResponse
 import google.generativeai as genai
 from dotenv import load_dotenv
 from pydantic import BaseModel, EmailStr
-from typing import Optional
+from typing import Optional, List
 from sqlalchemy.orm import Session
+import io
 
 # Import database and auth modules
-from database import init_db, get_db, User, HistoryRecord, GlossaryTerm
+from database import init_db, get_db, User, HistoryRecord, GlossaryTerm, ReferenceDocument
 from auth import verify_password, get_password_hash, create_access_token, verify_token
 
 # Load environment variables
@@ -52,6 +53,11 @@ class HistorySaveRequest(BaseModel):
     score: Optional[int] = None
     words: Optional[int] = None
 
+class GlossaryItemRequest(BaseModel):
+    source: str
+    target: str
+    category: Optional[str] = None
+
 # Helper: Get current user from token
 def get_current_user(authorization: Optional[str] = Header(None), db: Session = Depends(get_db)):
     if not authorization or not authorization.startswith("Bearer "):
@@ -72,7 +78,6 @@ def get_current_user(authorization: Optional[str] = Header(None), db: Session = 
 def get_gemini_model(model_name: str, api_key: str):
     genai.configure(api_key=api_key)
     # Map frontend model names to Gemini model names if necessary
-    # For now, assuming model_name is compatible or using a default
     target_model = "gemini-1.5-pro" if "pro" in model_name else "gemini-1.5-flash"
     return genai.GenerativeModel(target_model)
 
@@ -139,23 +144,104 @@ async def login(request: LoginRequest, db: Session = Depends(get_db)):
 
 # ===== AI Endpoints =====
 
+# Helper: Get relevant glossary terms
+def get_relevant_glossary_terms(text: str, user_id: int, db: Session) -> str:
+    """Find glossary terms that appear in the text"""
+    terms = db.query(GlossaryTerm).filter(GlossaryTerm.user_id == user_id).all()
+    relevant_terms = []
+    
+    for term in terms:
+        if term.source.lower() in text.lower():
+            relevant_terms.append(f"{term.source} -> {term.target}")
+            
+    if not relevant_terms:
+        return ""
+        
+    return "\n".join(relevant_terms)
+
+class TranslateRequest(BaseModel):
+    text: str
+    targetLang: str
+    model: str
+    apiKey: Optional[str] = None
 
 @app.post("/api/polish")
-async def polish_text(request: PolishRequest):
+async def polish_text(
+    request: PolishRequest, 
+    authorization: Optional[str] = Header(None),
+    db: Session = Depends(get_db)
+):
     # Try to get key from request, then fallback to env var
     api_key = request.apiKey or os.getenv("GEMINI_API_KEY")
     
     if not api_key:
         raise HTTPException(status_code=401, detail="API Key is required. Please provide it in the UI or set GEMINI_API_KEY in backend/.env")
     
+    # Try to get user for glossary (optional)
+    glossary_context = ""
+    try:
+        if authorization:
+            user = get_current_user(authorization, db)
+            terms = get_relevant_glossary_terms(request.text, user.id, db)
+            if terms:
+                glossary_context = f"\n\nUse the following glossary terms:\n{terms}"
+    except:
+        pass # Ignore auth errors for polish, just skip glossary
+
     try:
         model = get_gemini_model(request.model, api_key)
         
         prompt = f"""
         Please polish the following academic text to make it more professional, clear, and concise. 
-        Maintain the original meaning but improve the flow and vocabulary.
+        Maintain the original meaning but improve the flow and vocabulary.{glossary_context}
         
         Text to polish:
+        {request.text}
+        """
+        
+        response = model.generate_content(prompt, stream=True)
+        
+        async def stream_generator():
+            for chunk in response:
+                if chunk.text:
+                    yield chunk.text
+                    
+        return StreamingResponse(stream_generator(), media_type="text/plain")
+        
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.post("/api/translate")
+async def translate_text(
+    request: TranslateRequest,
+    authorization: Optional[str] = Header(None),
+    db: Session = Depends(get_db)
+):
+    # Try to get key from request, then fallback to env var
+    api_key = request.apiKey or os.getenv("GEMINI_API_KEY")
+    
+    if not api_key:
+        raise HTTPException(status_code=401, detail="API Key is required.")
+    
+    # Try to get user for glossary (optional)
+    glossary_context = ""
+    try:
+        if authorization:
+            user = get_current_user(authorization, db)
+            terms = get_relevant_glossary_terms(request.text, user.id, db)
+            if terms:
+                glossary_context = f"\n\nUse the following glossary terms:\n{terms}"
+    except:
+        pass 
+
+    try:
+        model = get_gemini_model(request.model, api_key)
+        
+        prompt = f"""
+        Please translate the following academic text to {request.targetLang}.
+        Ensure accuracy and academic tone.{glossary_context}
+        
+        Text to translate:
         {request.text}
         """
         
@@ -184,8 +270,7 @@ async def analyze_upload(
         raise HTTPException(status_code=401, detail="API Key is required. Please provide it in the UI or set GEMINI_API_KEY in backend/.env")
 
     try:
-        import pdfplumber
-        import io
+        import pypdf
         
         # Read file content
         content = await file.read()
@@ -195,12 +280,14 @@ async def analyze_upload(
         # Parse PDF content
         if file.filename.endswith('.pdf'):
             try:
-                with pdfplumber.open(io.BytesIO(content)) as pdf:
-                    pages_analyzed = len(pdf.pages)
-                    for page in pdf.pages:
-                        page_text = page.extract_text()
-                        if page_text:
-                            full_text += page_text + "\n\n"
+                pdf_file = io.BytesIO(content)
+                reader = pypdf.PdfReader(pdf_file)
+                pages_analyzed = len(reader.pages)
+                
+                for page in reader.pages:
+                    page_text = page.extract_text()
+                    if page_text:
+                        full_text += page_text + "\n\n"
                 
                 print(f"[INFO] Extracted {len(full_text)} characters from {pages_analyzed} pages")
             except Exception as pdf_error:
@@ -219,7 +306,6 @@ async def analyze_upload(
             raise HTTPException(status_code=400, detail="No text content found in the document.")
         
         # Configure Gemini
-        import google.generativeai as genai
         genai.configure(api_key=final_api_key)
         target_model = "gemini-1.5-pro" if "pro" in model else "gemini-1.5-flash"
         gemini_model = genai.GenerativeModel(target_model)
@@ -283,6 +369,203 @@ Confirm you have read the ENTIRE document by mentioning specific content from di
         print(f"[ERROR] Analysis failed: {str(e)}")
         raise HTTPException(status_code=500, detail=f"Analysis failed: {str(e)}")
 
+@app.post("/api/chat-doc")
+async def chat_doc(
+    file: Optional[UploadFile] = File(None),
+    question: str = Form(...),
+    model: str = Form(...),
+    apiKey: Optional[str] = Form(None)
+):
+    """Chat with a document"""
+    final_api_key = apiKey or os.getenv("GEMINI_API_KEY")
+    if not final_api_key:
+        raise HTTPException(status_code=401, detail="API Key is required")
+
+    try:
+        context_text = ""
+        if file:
+            import pypdf
+            content = await file.read()
+            if file.filename.endswith('.pdf'):
+                try:
+                    pdf_file = io.BytesIO(content)
+                    reader = pypdf.PdfReader(pdf_file)
+                    for page in reader.pages:
+                        text = page.extract_text()
+                        if text:
+                            context_text += text + "\n"
+                except Exception as e:
+                    print(f"PDF Error: {e}")
+            elif file.filename.endswith(('.txt', '.md')):
+                context_text = content.decode('utf-8', errors='ignore')
+        
+        # Construct prompt
+        model_instance = get_gemini_model(model, final_api_key)
+        
+        prompt = f"""
+        You are an intelligent academic assistant. 
+        
+        Context from document:
+        {context_text[:50000]}  # Limit context size
+        
+        User Question: {question}
+        
+        Please answer the question based on the provided document context. If the answer is not in the context, use your general knowledge but mention that it's not in the document.
+        """
+        
+        response = model_instance.generate_content(prompt)
+        return response.text
+
+    except Exception as e:
+        print(f"ChatDoc Error: {e}")
+        return f"Error: {str(e)}"
+
+# ===== Glossary Endpoints =====
+
+@app.get("/api/glossary")
+async def get_glossary(
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    """Get all glossary terms for current user"""
+    terms = db.query(GlossaryTerm).filter(GlossaryTerm.user_id == current_user.id).order_by(GlossaryTerm.created_at.desc()).all()
+    return [
+        {
+            "id": str(t.id),
+            "source": t.source,
+            "target": t.target,
+            "category": t.category,
+            "createdAt": t.created_at.isoformat()
+        }
+        for t in terms
+    ]
+
+@app.post("/api/glossary")
+async def add_glossary_term(
+    term: GlossaryItemRequest,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    """Add a new glossary term"""
+    new_term = GlossaryTerm(
+        user_id=current_user.id,
+        source=term.source,
+        target=term.target,
+        category=term.category
+    )
+    db.add(new_term)
+    db.commit()
+    db.refresh(new_term)
+    return {
+        "id": str(new_term.id),
+        "source": new_term.source,
+        "target": new_term.target,
+        "category": new_term.category,
+        "createdAt": new_term.created_at.isoformat()
+    }
+
+@app.delete("/api/glossary/{term_id}")
+async def delete_glossary_term(
+    term_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    """Delete a glossary term"""
+    term = db.query(GlossaryTerm).filter(GlossaryTerm.id == term_id, GlossaryTerm.user_id == current_user.id).first()
+    if not term:
+        raise HTTPException(status_code=404, detail="Term not found")
+    
+    db.delete(term)
+    db.commit()
+    return {"success": True}
+
+# ===== References Endpoints =====
+
+@app.get("/api/references")
+async def get_references(
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    """Get all reference documents for current user"""
+    docs = db.query(ReferenceDocument).filter(ReferenceDocument.user_id == current_user.id).order_by(ReferenceDocument.upload_date.desc()).all()
+    return [
+        {
+            "id": str(d.id),
+            "filename": d.filename,
+            "fileType": d.file_type,
+            "uploadDate": d.upload_date.isoformat(),
+            "size": "Unknown" # In a real app, store size
+        }
+        for d in docs
+    ]
+
+@app.post("/api/references/upload")
+async def upload_reference(
+    file: UploadFile = File(...),
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    """Upload a reference document"""
+    # Ensure upload directory exists
+    UPLOAD_DIR = "uploads"
+    if not os.path.exists(UPLOAD_DIR):
+        os.makedirs(UPLOAD_DIR)
+    
+    # Generate safe filename
+    import uuid
+    file_ext = os.path.splitext(file.filename)[1]
+    safe_filename = f"{uuid.uuid4()}{file_ext}"
+    file_path = os.path.join(UPLOAD_DIR, safe_filename)
+    
+    # Save file
+    with open(file_path, "wb") as buffer:
+        content = await file.read()
+        buffer.write(content)
+    
+    # Determine file type
+    file_type = file_ext.lstrip('.').lower()
+    if file_type not in ['pdf', 'txt', 'md']:
+        file_type = 'other'
+
+    # Save to DB
+    new_doc = ReferenceDocument(
+        user_id=current_user.id,
+        filename=file.filename,
+        file_path=file_path,
+        file_type=file_type
+    )
+    db.add(new_doc)
+    db.commit()
+    db.refresh(new_doc)
+    
+    return {
+        "id": str(new_doc.id),
+        "filename": new_doc.filename,
+        "fileType": new_doc.file_type,
+        "uploadDate": new_doc.upload_date.isoformat()
+    }
+
+@app.delete("/api/references/{doc_id}")
+async def delete_reference(
+    doc_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    """Delete a reference document"""
+    doc = db.query(ReferenceDocument).filter(ReferenceDocument.id == doc_id, ReferenceDocument.user_id == current_user.id).first()
+    if not doc:
+        raise HTTPException(status_code=404, detail="Document not found")
+    
+    # Delete file from disk
+    if os.path.exists(doc.file_path):
+        try:
+            os.remove(doc.file_path)
+        except Exception as e:
+            print(f"Error deleting file: {e}")
+    
+    db.delete(doc)
+    db.commit()
+    return {"success": True}
 
 # ===== User Data Endpoints =====
 
