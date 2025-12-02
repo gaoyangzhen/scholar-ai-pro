@@ -9,6 +9,7 @@ from pydantic import BaseModel, EmailStr
 from typing import Optional, List
 from sqlalchemy.orm import Session
 import io
+import vercel_blob
 
 # Import database and auth modules
 from database import init_db, get_db, User, HistoryRecord, GlossaryTerm, ReferenceDocument
@@ -509,23 +510,18 @@ async def upload_reference(
     current_user: User = Depends(get_current_user)
 ):
     """Upload a reference document"""
-    # Ensure upload directory exists
-    UPLOAD_DIR = "uploads"
-    if not os.path.exists(UPLOAD_DIR):
-        os.makedirs(UPLOAD_DIR)
-    
-    # Generate safe filename
-    import uuid
-    file_ext = os.path.splitext(file.filename)[1]
-    safe_filename = f"{uuid.uuid4()}{file_ext}"
-    file_path = os.path.join(UPLOAD_DIR, safe_filename)
-    
-    # Save file
-    with open(file_path, "wb") as buffer:
+    # Upload to Vercel Blob
+    try:
         content = await file.read()
-        buffer.write(content)
+        # vercel_blob.put returns { url: str, ... }
+        blob = vercel_blob.put(file.filename, content, options={'access': 'public'})
+        file_path = blob['url']
+    except Exception as e:
+        print(f"Blob upload failed: {e}")
+        raise HTTPException(status_code=500, detail=f"Upload failed: {str(e)}")
     
     # Determine file type
+    file_ext = os.path.splitext(file.filename)[1]
     file_type = file_ext.lstrip('.').lower()
     if file_type not in ['pdf', 'txt', 'md']:
         file_type = 'other'
@@ -534,7 +530,7 @@ async def upload_reference(
     new_doc = ReferenceDocument(
         user_id=current_user.id,
         filename=file.filename,
-        file_path=file_path,
+        file_path=file_path, # Stores the Blob URL
         file_type=file_type
     )
     db.add(new_doc)
@@ -559,12 +555,18 @@ async def delete_reference(
     if not doc:
         raise HTTPException(status_code=404, detail="Document not found")
     
-    # Delete file from disk
-    if os.path.exists(doc.file_path):
+    # Delete file from Blob Storage
+    if doc.file_path and doc.file_path.startswith("http"):
+        try:
+            vercel_blob.delete(doc.file_path)
+        except Exception as e:
+            print(f"Error deleting blob: {e}")
+    # Fallback for old local files (optional)
+    elif os.path.exists(doc.file_path):
         try:
             os.remove(doc.file_path)
         except Exception as e:
-            print(f"Error deleting file: {e}")
+            print(f"Error deleting local file: {e}")
     
     db.delete(doc)
     db.commit()
