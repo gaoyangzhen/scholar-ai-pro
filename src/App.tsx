@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { 
   FileText, BookOpen, Database, History, ChevronLeft, ChevronRight, 
   Sparkles, Lock, Settings, LogOut, Cpu, Plus, CheckCircle, ChevronDown,
-  AlertTriangle
+  AlertTriangle, Languages, Book
 } from 'lucide-react';
 
 import AuthScreen from './components/AuthScreen';
@@ -10,6 +10,8 @@ import ReviewerModule from './components/ReviewerModule';
 import EditorModule from './components/EditorModule';
 import KnowledgeBaseModule from './components/KnowledgeBaseModule';
 import HistoryModule from './components/HistoryModule';
+import TranslatorModule from './components/TranslatorModule';
+import GlossaryModule from './components/GlossaryModule';
 import SettingsModal from './components/SettingsModal';
 import Sidebar from './components/Sidebar';
 import { initialModels, mockHistoryData } from './constants';
@@ -170,6 +172,8 @@ const App: React.FC = () => {
                 <span className="text-sm font-medium text-slate-500 capitalize flex items-center gap-2">
                     {currentView.module === 'reviewer' && <><FileText size={16}/> Reviewer</>}
                     {currentView.module === 'editor' && <><BookOpen size={16}/> Editor</>}
+                    {currentView.module === 'translator' && <><Languages size={16}/> Translator</>}
+                    {currentView.module === 'glossary' && <><Book size={16}/> Glossary</>}
                     {currentView.module === 'kb' && <><Database size={16}/> Knowledge Base</>}
                     {currentView.module === 'history' && <><History size={16}/> History</>}
                     
@@ -217,6 +221,14 @@ const App: React.FC = () => {
                     onSave={(data) => saveToHistory('editor', data)}
                 />
             )}
+            {currentView.module === 'translator' && (
+                <TranslatorModule 
+                    selectedModel={selectedModel} 
+                    apiKey={currentApiKey}
+                    checkGuestLimit={() => checkGuestLimit('editor')}
+                />
+            )}
+            {currentView.module === 'glossary' && <GlossaryModule />}
             {currentView.module === 'kb' && <KnowledgeBaseModule userMode={userMode} />}
             {currentView.module === 'history' && <HistoryModule savedRecords={savedRecords} />}
         </div>

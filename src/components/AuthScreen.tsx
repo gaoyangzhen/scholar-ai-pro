@@ -33,7 +33,49 @@ const AuthScreen: React.FC<AuthScreenProps> = ({ onLogin }) => {
     }
     
     if (!isLogin && !formData.fullName) {
+      setError("请输入姓名 (Please enter your full name)");
+      return;
+    }
+
+    setLoading(true);
+
+    try {
+      let result;
+      if (isLogin) {
+        result = await api.login(formData.email, formData.password);
+      } else {
+        result = await api.register(formData.email, formData.password, formData.fullName);
+      }
+
+      if (result.success) {
+        onLogin('account');
+      } else {
+        setError(result.error || "操作失败 (Operation failed)");
+      }
+    } catch (err) {
+      setError("网络错误，请稍后重试 (Network error)");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <div className="h-screen w-full bg-slate-900 flex items-center justify-center p-4 relative overflow-hidden">
+      {/* Background Effects */}
+      <div className="absolute top-0 left-0 w-full h-full overflow-hidden pointer-events-none">
+        <div className="absolute top-1/4 left-1/4 w-96 h-96 bg-blue-600/20 rounded-full blur-3xl animate-pulse"></div>
+        <div className="absolute bottom-1/4 right-1/4 w-96 h-96 bg-indigo-600/20 rounded-full blur-3xl animate-pulse delay-1000"></div>
+      </div>
+
+      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md overflow-hidden relative z-10 animate-scale-in">
+        <div className="bg-slate-50 p-6 text-center border-b border-slate-100">
+          <div className="w-16 h-16 bg-blue-100 rounded-full flex items-center justify-center mx-auto mb-4 text-blue-600 shadow-inner">
+            <Sparkles size={32} />
+          </div>
+          <h1 className="text-2xl font-bold text-slate-800">ScholarAI <span className="text-blue-600">PRO</span></h1>
+          <p className="text-slate-500 text-sm mt-1">SCI/EI 论文投稿辅助系统</p>
         </div>
+
         <div className="p-8">
           <div className="flex gap-4 mb-6 border-b border-slate-100 pb-2">
             <button 

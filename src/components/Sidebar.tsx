@@ -1,7 +1,8 @@
 import React from 'react';
 import { 
   Sparkles, FileText, BookOpen, Database, Clock, 
-  Cpu, ChevronDown, CheckCircle, Plus, Settings, LogOut 
+  Cpu, ChevronDown, CheckCircle, Plus, Settings, LogOut,
+  Languages, Book
 } from 'lucide-react';
 import { NavigationState, UserMode, Model } from '../types';
 
@@ -58,6 +59,18 @@ const Sidebar: React.FC<SidebarProps> = ({
             label="写作工作台 (Editor)" 
             active={currentView.module === 'editor'} 
             onClick={() => navigateTo({ ...currentView, module: 'editor', editorMode: currentView.module === 'editor' ? currentView.editorMode : 'none' })}
+          />
+          <SidebarItem 
+            icon={<Languages size={20}/>} 
+            label="翻译助手 (Translator)" 
+            active={currentView.module === 'translator'} 
+            onClick={() => navigateTo({ ...currentView, module: 'translator' })}
+          />
+          <SidebarItem 
+            icon={<Book size={20}/>} 
+            label="术语库 (Glossary)" 
+            active={currentView.module === 'glossary'} 
+            onClick={() => navigateTo({ ...currentView, module: 'glossary' })}
           />
           <SidebarItem 
             icon={<Database size={20}/>} 

@@ -4,6 +4,7 @@ export interface Model {
   desc: string;
   badge: string;
   isDefault: boolean;
+  key?: string; // Optional key for user-added models
 }
 
 export interface HistoryRecord {
@@ -41,11 +42,12 @@ export interface Chapter {
   children?: Chapter[];
 }
 
-export interface GlossaryItem {
-  id: number;
-  cn: string;
-  en: string;
-  note: string;
+export interface GlossaryTerm {
+  id: string;
+  source: string;
+  target: string;
+  category?: string;
+  createdAt: string;
 }
 
 export interface FileItem {
@@ -56,9 +58,9 @@ export interface FileItem {
 }
 
 export interface NavigationState {
-  module: 'reviewer' | 'editor' | 'kb' | 'history';
-  step?: 'upload' | 'dashboard' | 'detail';
-  editorMode?: 'none' | 'blank' | 'uploaded';
+  module: 'reviewer' | 'editor' | 'kb' | 'history' | 'translator' | 'glossary';
+  step?: 'upload' | 'analysis' | 'chat';
+  editorMode?: 'polish' | 'expand' | 'summarize' | 'none';
 }
 
 export type UserMode = 'guest' | 'account';
