@@ -6,8 +6,9 @@ from datetime import datetime
 import os
 
 # Database configuration
-# Check for DATABASE_URL (Vercel Postgres) or fallback to local SQLite
-DATABASE_URL = os.getenv("DATABASE_URL", "sqlite:///./scholar_ai.db")
+# Database configuration
+# Check for POSTGRES_URL (Vercel Postgres default) or DATABASE_URL, fallback to local SQLite
+DATABASE_URL = os.getenv("POSTGRES_URL") or os.getenv("DATABASE_URL") or "sqlite:///./scholar_ai.db"
 
 # Handle Postgres URL format for SQLAlchemy (postgres:// -> postgresql://)
 if DATABASE_URL.startswith("postgres://"):
