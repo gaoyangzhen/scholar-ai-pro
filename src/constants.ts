@@ -1,21 +1,14 @@
-import { Model, HistoryRecord, DiffItem, SavedPrompt, ReviewScore, Chapter, GlossaryTerm, FileItem } from './types';
+// %% [SECTION] Mock Data Configuration
 
-// ... (keep other exports)
-
-export const mockGlossary: GlossaryTerm[] = [
-  { id: '1', source: '灵敏度', target: 'Sensitivity', category: 'Note: 不要翻译成 Responsiveness', createdAt: '2023-10-01' },
-  { id: '2', source: '卷积神经网络', target: 'Convolutional Neural Networks (CNNs)', category: 'Note: 首次出现需全称', createdAt: '2023-10-01' },
-  { id: '3', source: '鲁棒性', target: 'Robustness', category: 'General', createdAt: '2023-10-01' },
+export const initialModels = [
+  { id: 'gpt-4o', name: 'GPT-4o (OpenAI)', desc: '综合能力最强，适合深度逻辑分析', badge: 'Recommended', isDefault: true },
+  { id: 'claude-3.5', name: 'Claude 3.5 Sonnet', desc: '语言风格自然，适合润色写作', badge: 'Best for Writing', isDefault: true },
+  { id: 'deepseek-v2', name: 'DeepSeek V2.5', desc: '高性价比，适合中文语境', badge: 'Economy', isDefault: true },
+  { id: 'gemini-1.5-pro', name: 'Gemini 1.5 Pro', desc: 'Google 最强模型，擅长长文本分析', badge: 'Google', isDefault: true },
+  { id: 'gemini-1.5-flash', name: 'Gemini 1.5 Flash', desc: '速度极快，适合实时翻译', badge: 'Fast', isDefault: true },
 ];
 
-export const initialModels: Model[] = [
-  { id: 'gemini-1.5-flash', name: 'Gemini 1.5 Flash', desc: '免费、速度快，适合日常润色 (Free)', badge: 'Free & Fast', isDefault: true },
-  { id: 'deepseek-chat', name: 'DeepSeek V3', desc: '国产之光，性价比极高，中文超强', badge: 'Best Value', isDefault: true },
-  { id: 'gpt-4o-mini', name: 'GPT-4o mini', desc: 'OpenAI 高性价比模型，响应迅速', badge: 'OpenAI', isDefault: true },
-  { id: 'gemini-1.5-pro', name: 'Gemini 1.5 Pro', desc: '长窗口支持，适合长论文分析', badge: 'Long Context', isDefault: true },
-];
-
-export const defaultEditorStructure: Chapter[] = [
+export const defaultEditorStructure = [
   { id: 'sec-0', title: 'Abstract', level: 0 },
   { id: 'sec-1', title: '1. Introduction', level: 0 },
   { id: 'sec-2', title: '2. Methodology', level: 0 },
@@ -34,13 +27,13 @@ Please evaluate the attached manuscript based on the following criteria:
 
 Provide a detailed report with specific improvement suggestions.`;
 
-export const mockSavedPrompts: SavedPrompt[] = [
+export const mockSavedPrompts = [
   { id: 1, name: 'Standard Review (Default)', content: defaultPrompt, isSystem: true },
   { id: 2, name: 'Focus on Grammar (润色模式)', content: 'Focus strictly on grammar, academic tone, and sentence structure. Do not critique the methodology.', isSystem: false },
   { id: 3, name: 'Strict Method Check (方法论)', content: 'Act as a statistician. Critically evaluate the sample size, statistical tests used, and p-value interpretations.', isSystem: false },
 ];
 
-export const mockReviewScore: ReviewScore[] = [
+export const mockReviewScore = [
   { subject: '创新性 (Novelty)', A: 85, fullMark: 100 },
   { subject: '方法论 (Methodology)', A: 92, fullMark: 100 },
   { subject: '结果讨论 (Discussion)', A: 78, fullMark: 100 },
@@ -49,7 +42,7 @@ export const mockReviewScore: ReviewScore[] = [
   { subject: '伦理合规 (Ethics)', A: 95, fullMark: 100 },
 ];
 
-export const initialDiffs: DiffItem[] = [
+export const initialDiffs = [
   {
     id: 1,
     original: "The result shows that the method is very good and fast.",
@@ -88,7 +81,7 @@ To validate our approach, we used a computer to calculate the data. The simulati
 [...Rest of the paper content simulated...]
 `;
 
-export const mockNestedChapters: Chapter[] = [
+export const mockNestedChapters = [
   { id: 'c1', title: 'Abstract', level: 0 },
   { 
     id: 'c2', title: '1. Introduction', level: 0,
@@ -117,18 +110,23 @@ export const mockNestedChapters: Chapter[] = [
   { id: 'c6', title: '5. Conclusion', level: 0 },
 ];
 
-export const mockGlossary: GlossaryItem[] = [
+export const mockGlossary = [
   { id: 1, cn: '灵敏度', en: 'Sensitivity', note: '不要翻译成 Responsiveness' },
   { id: 2, cn: '卷积神经网络', en: 'Convolutional Neural Networks (CNNs)', note: '首次出现需全称' },
   { id: 3, cn: '鲁棒性', en: 'Robustness', note: '-' },
 ];
 
-export const mockFiles: FileItem[] = [
+export const mockFiles = [
   { id: 1, name: 'Reference_Wang_et_al_2023.pdf', type: 'PDF', size: '2.4 MB' },
   { id: 2, name: 'Lab_Data_Supplementary.xlsx', type: 'Excel', size: '1.1 MB' },
 ];
 
-export const mockHistoryData: HistoryRecord[] = [
+export const mockHistoryData = [
   { id: 101, type: 'review', title: 'Deep Learning Optimization - Review Report', date: '2023-10-24 14:30', score: 81.3 },
   { id: 102, type: 'editor', title: 'Methodology Draft v2', date: '2023-10-23 09:15', words: 450 },
+  { id: 103, type: 'translate', title: 'Related Work - CN to EN', date: '2023-10-22 16:45', words: 1200 },
+];
+
+export const mockChatMessages = [
+  { id: 1, role: 'ai', content: '您好！我是您的论文阅读助手。我已经阅读了您上传的文档《Deep Learning Optimization》。您可以问我关于这篇论文的任何问题，例如：“核心创新点是什么？”或“实验数据支持结论吗？”' },
 ];
