@@ -149,6 +149,29 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ models, apiKeys, onClose,
                 
                 {isAddingModel && (
                    <div className="mt-4 p-5 bg-blue-50/50 rounded-xl border border-blue-100 space-y-4 animate-fade-in">
+                      {/* Quick Fill Buttons */}
+                      <div className="flex gap-2 mb-2 overflow-x-auto pb-2">
+                        <span className="text-xs font-semibold text-slate-500 flex items-center shrink-0">快速预设:</span>
+                        <button 
+                          onClick={() => setNewModel({ name: 'DeepSeek V3', desc: 'DeepSeek Official API', key: '', baseUrl: 'https://api.deepseek.com' })}
+                          className="px-2 py-1 text-xs bg-white border border-slate-200 rounded hover:border-blue-400 hover:text-blue-600 transition-colors whitespace-nowrap"
+                        >
+                          DeepSeek
+                        </button>
+                        <button 
+                          onClick={() => setNewModel({ name: 'Qwen 2.5 (SiliconFlow)', desc: 'Via SiliconFlow', key: '', baseUrl: 'https://api.siliconflow.cn/v1' })}
+                          className="px-2 py-1 text-xs bg-white border border-slate-200 rounded hover:border-blue-400 hover:text-blue-600 transition-colors whitespace-nowrap"
+                        >
+                          SiliconFlow
+                        </button>
+                        <button 
+                          onClick={() => setNewModel({ name: 'OpenRouter', desc: 'Aggregated Models', key: '', baseUrl: 'https://openrouter.ai/api/v1' })}
+                          className="px-2 py-1 text-xs bg-white border border-slate-200 rounded hover:border-blue-400 hover:text-blue-600 transition-colors whitespace-nowrap"
+                        >
+                          OpenRouter
+                        </button>
+                      </div>
+
                       <div className="grid grid-cols-2 gap-4">
                          <div>
                             <label className="block text-xs font-semibold text-slate-600 mb-1">模型名称 (Name)</label>

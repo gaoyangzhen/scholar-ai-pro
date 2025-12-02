@@ -83,9 +83,19 @@ def get_gemini_model(model_name: str, api_key: str):
 
 # ===== Authentication Endpoints =====
 
+from email_validator import validate_email, EmailNotValidError
+
+# ... (keep existing imports)
+
 @app.post("/api/register")
 async def register(request: RegisterRequest, db: Session = Depends(get_db)):
     """Register a new user"""
+    # 1. Strict Email Validation
+    try:
+        validate_email(request.email, check_deliverability=False)
+    except EmailNotValidError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
     # Check if user already exists
     existing_user = db.query(User).filter(User.email == request.email).first()
     if existing_user:
@@ -107,17 +117,10 @@ async def register(request: RegisterRequest, db: Session = Depends(get_db)):
     db.commit()
     db.refresh(new_user)
     
-    # Create access token
-    access_token = create_access_token(data={"sub": new_user.email})
-    
+    # NO Auto-Login: Do not return token
     return {
         "success": True,
-        "token": access_token,
-        "user": {
-            "email": new_user.email,
-            "fullName": new_user.full_name,
-            "id": new_user.id
-        }
+        "message": "Registration successful. Please login."
     }
 
 @app.post("/api/login")

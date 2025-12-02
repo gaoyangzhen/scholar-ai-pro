@@ -1,10 +1,18 @@
-import { Model, HistoryRecord, DiffItem, SavedPrompt, ReviewScore, Chapter, GlossaryItem, FileItem } from './types';
+import { Model, HistoryRecord, DiffItem, SavedPrompt, ReviewScore, Chapter, GlossaryTerm, FileItem } from './types';
+
+// ... (keep other exports)
+
+export const mockGlossary: GlossaryTerm[] = [
+  { id: '1', source: '灵敏度', target: 'Sensitivity', category: 'Note: 不要翻译成 Responsiveness', createdAt: '2023-10-01' },
+  { id: '2', source: '卷积神经网络', target: 'Convolutional Neural Networks (CNNs)', category: 'Note: 首次出现需全称', createdAt: '2023-10-01' },
+  { id: '3', source: '鲁棒性', target: 'Robustness', category: 'General', createdAt: '2023-10-01' },
+];
 
 export const initialModels: Model[] = [
-  { id: 'gpt-4o', name: 'GPT-4o (OpenAI)', desc: '综合能力最强，适合深度逻辑分析', badge: 'Recommended', isDefault: true },
-  { id: 'claude-3.5', name: 'Claude 3.5 Sonnet', desc: '语言风格自然，适合润色写作', badge: 'Best for Writing', isDefault: true },
-  { id: 'deepseek-v2', name: 'DeepSeek V2.5', desc: '高性价比，适合中文语境', badge: 'Economy', isDefault: true },
-  { id: 'gemini-pro', name: 'Gemini 1.5 Pro', desc: 'Google 最新模型，长窗口支持', badge: 'Google', isDefault: true },
+  { id: 'gemini-1.5-flash', name: 'Gemini 1.5 Flash', desc: '免费、速度快，适合日常润色 (Free)', badge: 'Free & Fast', isDefault: true },
+  { id: 'deepseek-chat', name: 'DeepSeek V3', desc: '国产之光，性价比极高，中文超强', badge: 'Best Value', isDefault: true },
+  { id: 'gpt-4o-mini', name: 'GPT-4o mini', desc: 'OpenAI 高性价比模型，响应迅速', badge: 'OpenAI', isDefault: true },
+  { id: 'gemini-1.5-pro', name: 'Gemini 1.5 Pro', desc: '长窗口支持，适合长论文分析', badge: 'Long Context', isDefault: true },
 ];
 
 export const defaultEditorStructure: Chapter[] = [

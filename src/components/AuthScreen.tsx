@@ -31,6 +31,13 @@ const AuthScreen: React.FC<AuthScreenProps> = ({ onLogin }) => {
       setError("请输入邮箱和密码 (Please enter email and password)");
       return;
     }
+
+    // Strict Email Regex Validation
+    const emailRegex = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
+    if (!emailRegex.test(formData.email)) {
+      setError("请输入有效的邮箱地址 (Invalid email format)");
+      return;
+    }
     
     if (!isLogin && !formData.fullName) {
       setError("请输入姓名 (Please enter your full name)");
@@ -43,14 +50,22 @@ const AuthScreen: React.FC<AuthScreenProps> = ({ onLogin }) => {
       let result;
       if (isLogin) {
         result = await api.login(formData.email, formData.password);
+        if (result.success) {
+            onLogin('account');
+        } else {
+            setError(result.error || "登录失败 (Login failed)");
+        }
       } else {
         result = await api.register(formData.email, formData.password, formData.fullName);
-      }
-
-      if (result.success) {
-        onLogin('account');
-      } else {
-        setError(result.error || "操作失败 (Operation failed)");
+        if (result.success) {
+            // Registration Successful -> Switch to Login
+            setIsLogin(true);
+            setError(null); // Clear error
+            alert("注册成功！请使用新账号登录。\nRegistration successful! Please login.");
+            setFormData(prev => ({ ...prev, password: '' })); // Clear password for safety
+        } else {
+            setError(result.error || "注册失败 (Registration failed)");
+        }
       }
     } catch (err) {
       setError("网络错误，请稍后重试 (Network error)");
