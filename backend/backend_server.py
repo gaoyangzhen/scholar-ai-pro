@@ -12,6 +12,10 @@ from sqlalchemy.orm import Session
 import io
 import vercel_blob
 
+# Fix import path for Vercel
+import sys
+sys.path.append(os.path.dirname(os.path.abspath(__file__)))
+
 # Import database and auth modules
 from database import init_db, get_db, User, HistoryRecord, GlossaryTerm, ReferenceDocument
 from auth import verify_password, get_password_hash, create_access_token, verify_token
