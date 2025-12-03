@@ -7,8 +7,14 @@ import os
 
 # Database configuration
 # Database configuration
-# Check for POSTGRES_URL (Vercel Postgres default) or DATABASE_URL, fallback to local SQLite
-DATABASE_URL = os.getenv("POSTGRES_URL") or os.getenv("DATABASE_URL") or "sqlite:///./scholar_ai.db"
+# Check for POSTGRES_URL (Vercel Postgres default) or DATABASE_URL
+# Fallback to SQLite: use /tmp on Vercel (read-only FS), otherwise local file
+if os.environ.get("VERCEL"):
+    DEFAULT_SQLITE = "sqlite:////tmp/scholar_ai.db"
+else:
+    DEFAULT_SQLITE = "sqlite:///./scholar_ai.db"
+
+DATABASE_URL = os.getenv("POSTGRES_URL") or os.getenv("DATABASE_URL") or DEFAULT_SQLITE
 
 # Handle Postgres URL format for SQLAlchemy (postgres:// -> postgresql://)
 if DATABASE_URL.startswith("postgres://"):
