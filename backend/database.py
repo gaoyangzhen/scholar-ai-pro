@@ -6,22 +6,14 @@ from datetime import datetime
 import os
 
 # Database configuration
-# Database configuration
-# Check for POSTGRES_URL (Vercel Postgres default) or DATABASE_URL
-# Fallback to SQLite: use /tmp on Vercel (read-only FS), otherwise local file
+# SQLite only - use /tmp on Vercel (read-only FS), local file otherwise
 if os.environ.get("VERCEL"):
-    DEFAULT_SQLITE = "sqlite:////tmp/scholar_ai.db"
+    DATABASE_URL = "sqlite:////tmp/scholar_ai.db"
 else:
-    DEFAULT_SQLITE = "sqlite:///./scholar_ai.db"
+    DATABASE_URL = "sqlite:///./scholar_ai.db"
 
-DATABASE_URL = os.getenv("POSTGRES_URL") or os.getenv("DATABASE_URL") or DEFAULT_SQLITE
-
-# Handle Postgres URL format for SQLAlchemy (postgres:// -> postgresql://)
-if DATABASE_URL.startswith("postgres://"):
-    DATABASE_URL = DATABASE_URL.replace("postgres://", "postgresql://", 1)
-
-# Connect args: check_same_thread is only for SQLite
-connect_args = {"check_same_thread": False} if "sqlite" in DATABASE_URL else {}
+# SQLite-specific connection args
+connect_args = {"check_same_thread": False}
 
 engine = create_engine(DATABASE_URL, connect_args=connect_args)
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
