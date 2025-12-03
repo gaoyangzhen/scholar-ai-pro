@@ -3,7 +3,7 @@ import { NavigationState, GlossaryTerm, ReferenceDocument } from "./types";
 // 环境变量配置
 const USE_MOCK_API = import.meta.env.VITE_USE_MOCK === "true";
 const API_BASE_URL = import.meta.env.PROD
-  ? ""
+  ? "/api" // Vercel rewrites /api -> backend
   : import.meta.env.VITE_API_BASE_URL || "http://localhost:8000";
 
 // Mock Data
