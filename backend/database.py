@@ -7,13 +7,21 @@ import os
 
 # Database configuration
 # SQLite only - use /tmp on Vercel (read-only FS), local file otherwise
-if os.environ.get("VERCEL"):
-    DATABASE_URL = "sqlite:////tmp/scholar_ai.db"
-else:
-    DATABASE_URL = "sqlite:///./scholar_ai.db"
+# Database configuration
+DATABASE_URL = os.getenv("DATABASE_URL")
+
+if not DATABASE_URL:
+    # SQLite only - use /tmp on Vercel (read-only FS), local file otherwise
+    if os.environ.get("VERCEL"):
+        DATABASE_URL = "sqlite:////tmp/scholar_ai.db"
+    else:
+        DATABASE_URL = "sqlite:///./scholar_ai.db"
 
 # SQLite-specific connection args
-connect_args = {"check_same_thread": False}
+if "sqlite" in DATABASE_URL:
+    connect_args = {"check_same_thread": False}
+else:
+    connect_args = {}
 
 engine = create_engine(DATABASE_URL, connect_args=connect_args)
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)

@@ -7,7 +7,10 @@ from typing import Optional
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
 # JWT settings
-SECRET_KEY = "your-secret-key-change-in-production-use-env-var"  # TODO: Move to .env
+import os
+
+# JWT settings
+SECRET_KEY = os.getenv("SECRET_KEY", "dev-secret-key-change-in-prod")
 ALGORITHM = "HS256"
 ACCESS_TOKEN_EXPIRE_MINUTES = 60 * 24 * 7  # 7 days
 

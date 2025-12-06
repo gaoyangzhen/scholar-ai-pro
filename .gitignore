@@ -27,3 +27,11 @@ dist-ssr
 backend/.env
 backend/venv
 backend/__pycache__
+*.pyc
+
+# Test & Temp
+test_scholar.db
+verify_backend_logic.py
+TESTING_GUIDE.md
+scholar_ai.db
+*.out
